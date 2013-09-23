@@ -1,0 +1,145 @@
+#NAME
+#      Noosfero Lens
+#SYNOPSIS
+#      Provide a Unity Len to search content on Noosfero
+#DESCRIPTION
+#      Quickly template project, modified to allow search content on Noosfero, including artciles, communities and people.
+#REFERENCES
+#       http://developer.ubuntu.com/2012/04/how-to-create-a-wikipedia-unity-lens-for-ubuntu/
+#AUTHOR
+#       Ranulfo Netto <rcnetto@yahoo.com>
+#NOTES:
+#       1. Icons adapted from noosfero (released under GNU Affero General Public License (AGPL), version 3)
+
+import logging
+import optparse
+import urllib2
+from lxml import html
+from bs4 import UnicodeDammit
+import gettext
+from gettext import gettext as _
+gettext.textdomain('unity-lens-noosfero')
+
+from singlet.lens import SingleScopeLens, IconViewCategory, ListViewCategory
+
+from unity_lens_noosfero import unity_lens_noosferoconfig
+
+class NoosferoLens(SingleScopeLens):
+
+    # put your site here (your scope)
+    site = ""
+    class Object(object):
+        pass
+    class Meta:
+        name = 'noosfero'
+        description = 'Noosfero Lens'
+        search_hint = 'Search Content On Noosfero'
+        icon = 'unity-lens-noosfero.svg'
+        search_on_blank=False
+        categories = ['Articles', 'Communities', 'People']
+
+    # Categories of this lens
+    articles_category = ListViewCategory("Articles", "file://%s/noosfero-article-icon.svg" % (unity_lens_noosferoconfig.get_data_path()))
+    communities_category = IconViewCategory("Communities", "file://%s/noosfero-community-icon.svg" % (unity_lens_noosferoconfig.get_data_path()))
+    people_category = IconViewCategory("People", "file://%s/noosfero-person-icon.svg" % (unity_lens_noosferoconfig.get_data_path()))
+
+    # Search for articles
+    def noosfero_articles_query(self,search):
+        try:
+            #mount url using the default site
+            url = ("%s/search/articles?query=%s" % (self.site, search))
+            #read and parse
+            response = urllib2.urlopen(url)
+            content = response.read()
+            doc = UnicodeDammit(content, is_html=True)
+            parser = html.HTMLParser(encoding=doc.original_encoding)
+            root = html.document_fromstring(content, parser=parser)
+
+            articlesresults = self.Object()
+            #run xpath against page to obtain nodes
+            articlesresults.articles = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/a')
+            articlesresults.authors = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/div[contains(@class,"search-article-author-changes")]')
+            return articlesresults
+        except (IOError, KeyError, urllib2.URLError, urllib2.HTTPError) as e:
+            print "Error : Unable to serch Noosfero"
+            print format(e.errno, e.strerror)
+            #is this return right?
+            return []
+
+    # Search for communities
+    def noosfero_communities_query(self,search):
+        try:
+            url = ("%s/search/communities?query=%s" % (self.site, search))
+            response = urllib2.urlopen(url)
+            content = response.read()
+            doc = UnicodeDammit(content, is_html=True)
+            parser = html.HTMLParser(encoding=doc.original_encoding)
+            root = html.document_fromstring(content, parser=parser)
+            communitiesresults = self.Object()
+            communitiesresults.communities = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/div/div/a[2]')
+            communitiesresults.icons = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/div/div/a[2]/span[1]/img')
+            return communitiesresults
+        except (IOError, KeyError, urllib2.URLError, urllib2.HTTPError) as e:
+            print "Error : Unable to search Noosfero"
+            print format(e.errno, e.strerror)
+            return []
+
+    # Search for people
+    def noosfero_people_query(self,search):
+        try:
+            url = ("%s/search/people?query=%s" % (self.site, search))
+            response = urllib2.urlopen(url)
+            content = response.read()
+            doc = UnicodeDammit(content, is_html=True)
+            parser = html.HTMLParser(encoding=doc.original_encoding)
+            root = html.document_fromstring(content, parser=parser)
+            peopleresults = self.Object()
+            peopleresults.people = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/div/div/a[2]')
+            peopleresults.icons = root.xpath('//*[@id="search-results"]/div[1]/div/ul/li/div/div/a[2]/span[1]/img')
+            return peopleresults
+        except (IOError, KeyError, urllib2.URLError, urllib2.HTTPError) as e:
+            print "Error : Unable to search Noosfero"
+            print format(e.errno, e.strerror)
+            return []
+
+    def search(self, search, results):
+        search = search.replace(" ", "+")
+        print "Searching articles for ", search
+        articlesresults = self.noosfero_articles_query(search)
+        i = 0
+        for article in articlesresults.articles:
+            results.append(article.get('href'),
+                        "file://%s/noosfero-article-icon.svg" % (unity_lens_noosferoconfig.get_data_path()),
+                        self.articles_category,
+                         "text/html",
+                        article.text,
+                        articlesresults.authors[i].text_content().strip(),
+                        article.get('href'))
+            i = i + 1
+        pass
+        print "Searching communities for", search
+        communitiesresults = self.noosfero_communities_query(search)
+        i = 0
+        for community in communitiesresults.communities:
+            results.append(community.get('href'),
+                        "%s%s" % (self.site, communitiesresults.icons[i].get('src')),
+                        self.communities_category,
+                        "text/html",
+                        community.get('title'),
+                        communitiesresults.icons[i].get('src'),
+                        community.get('title'))
+            i = i + 1
+        pass
+        print "Searching people for", search
+        peopleresults = self.noosfero_people_query(search)
+        i = 0
+        for person in peopleresults.people:
+            results.append(person.get('href'),
+                        "%s%s" % (self.site, peopleresults.icons[i].get('src')),
+                        self.people_category,
+                        "text/html",
+                        person.get('title'),
+                        peopleresults.icons[i].get('src'),
+                        person.get('title'))
+            i = i + 1
+        pass

@@ -1,0 +1,7 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: unity-lens-noosfero
+Upstream-Contact: Ranulfo Netto <rcnetto@yahoo.com>
+Source: https://github.com/rcnetto/unity-lens-noosfero
+
+Files: *
+License: Apache License, v2

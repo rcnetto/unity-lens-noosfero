@@ -1,0 +1,11 @@
+[Lens]
+DBusName=unity.singlet.lens.noosfero
+DBusPath=/unity/singlet/lens/noosfero
+Name=Noosfero
+Icon=/usr/share/unity/lenses/noosfero/unity-lens-noosfero.svg
+Description=Noosfero Lens
+SearchHint=Search Noosfero
+#Shortcut=c
+
+[Desktop Entry]
+X-Ubuntu-Gettext-Domain=unity-lens-noosfero
